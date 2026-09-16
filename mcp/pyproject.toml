@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=75,<82"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compliance-ops-mcp"
+version = "0.2.0"
+description = "Bounded MCP servers for Compliance Ops and official NIST OSCAL catalogs"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "httpx>=0.28.1,<0.29.0",
+  "mcp>=1.23.3,<2.0.0",
+  "pydantic>=2.11.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.15.11,<0.16.0"]
+
+[project.scripts]
+compliance-ops-mcp = "compliance_ops:main"
+nist-oscal-catalogs = "oscal_catalogs:main"
+
+[tool.setuptools]
+py-modules = ["compliance_ops", "oscal_catalogs"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88

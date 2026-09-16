@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Web + Go + container
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: compliance
+          POSTGRES_PASSWORD: compliance
+          POSTGRES_DB: compliance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U compliance -d compliance"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://compliance:compliance@localhost:5432/compliance?sslmode=disable
+      COMPLIANCE_BLOB_ENDPOINT: localhost:9000
+      COMPLIANCE_BLOB_ACCESS_KEY: minioadmin
+      COMPLIANCE_BLOB_SECRET_KEY: minioadmin
+      COMPLIANCE_BLOB_BUCKET: compliance-evidence-ci
+      COMPLIANCE_BLOB_USE_SSL: "false"
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # MinIO needs a `server` command, which GitHub service containers cannot
+      # pass, so start it as a plain container and wait for its health endpoint.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e server /data
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null; then
+              echo "MinIO ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "MinIO did not become healthy" >&2
+          docker logs minio >&2
+          exit 1
+
+      # ---- Web -------------------------------------------------------------
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        run: npm ci --prefix web
+      - name: Typecheck web
+        run: npm --prefix web run typecheck
+      - name: Test scope category logic
+        run: npm --prefix web run test:scope-categories
+      - name: Build web (writes internal/webui/dist for go:embed)
+        run: npm --prefix web run build
+      - name: Audit web production dependencies
+        run: npm --prefix web audit --omit=dev --audit-level=high
+
+      # ---- OSCAL MCP -------------------------------------------------------
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Install MCP dependencies
+        run: uv sync --project mcp --extra dev --locked
+      - name: Lint and test MCP
+        run: |
+          uv run --project mcp ruff check mcp
+          uv run --project mcp python -m py_compile mcp/oscal_catalogs.py mcp/compliance_ops.py
+          uv run --project mcp python -m unittest discover -s mcp/tests -v
+
+      # ---- Go --------------------------------------------------------------
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l ./cmd ./internal)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test (unit + Postgres/MinIO integration)
+        run: go test ./... -race -count=1
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+      # ---- Container -------------------------------------------------------
+      - name: Build container image
+        run: docker build --tag compliance-ops:ci .

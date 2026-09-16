@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: compliance-ops
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: compliance-ops
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

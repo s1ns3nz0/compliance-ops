@@ -1,0 +1,1312 @@
+{
+  "catalog": {
+    "uuid": "ecaab8df-5a17-421c-bee7-044e3c0fac5c",
+    "metadata": {
+      "title": "Electronic (OSCAL) Version of Secure Software Development Framework (SSDF): Recommendations for Mitigating the Risk of Software Vulnerabilities",
+      "published": "2026-05-13T12:30:00-00:00",
+      "last-modified": "2026-05-12T02:02:16.00000-00:00",
+      "version": "1.0.0",
+      "oscal-version": "v1.2.2",
+      "revisions": [
+        {
+          "title": "Electronic (OSCAL) Version of Secure Software Development Framework (SSDF): Recommendations for Mitigating the Risk of Software Vulnerabilities",
+          "last-modified": "2025-07-06T22:16:50.000000-00:00",
+          "version": "1.0.0",
+          "oscal-version": "v1.1.3",
+          "links": [
+            {
+              "href": "14d86c0e-3299-426e-88bd-ab46123c3e75",
+              "rel": "version-history"
+            }
+          ],
+          "remarks": "OSCAL v1.1.3 representation of the Secure Software Development Framework (SSDF)."
+        }
+      ],
+      "props": [
+        {
+          "name": "framework-identifier",
+          "ns": "https://csrc.nist.gov/ns/cprt",
+          "value": "SSDF"
+        },
+        {
+          "name": "framework-version-identifier",
+          "ns": "https://csrc.nist.gov/ns/cprt",
+          "value": "SP_800_218_1_1_0"
+        },
+        {
+          "name": "generated-by",
+          "ns": "https://csrc.nist.gov/ns/cprt",
+          "value": "Cybersecurity And Privacy Open Reference Datasets In OSCAL (CAPORDINO)"
+        },
+        {
+          "name": "publication-status",
+          "ns": "https://csrc.nist.gov/ns/cprt",
+          "value": "Final"
+        }
+      ],
+      "links": [
+        {
+          "href": "#b6b6f996-2c51-4dd0-ac25-3a2e73930b58",
+          "rel": "alternate"
+        },
+        {
+          "href": "#b7cd7296-3062-44ac-868f-347d55295298",
+          "rel": "canonical"
+        },
+        {
+          "href": "#af13a2bc-4b01-4855-a17e-7966285061ad",
+          "rel": "cprt"
+        }
+      ],
+      "roles": [
+        {
+          "id": "creator",
+          "title": "OSCAL Document Creator"
+        },
+        {
+          "id": "publisher",
+          "title": "SP 800-218 Publisher"
+        },
+        {
+          "id": "contact-creator",
+          "title": "Contact Electronic Version Creator"
+        },
+        {
+          "id": "contact-publisher",
+          "title": "Contact Publisher"
+        }
+      ],
+      "parties": [
+        {
+          "uuid": "98c78f9b-5d50-4b01-b47f-d16801e8d0ab",
+          "type": "organization",
+          "name": "OSCAL Program",
+          "short-name": "NIST",
+          "email-addresses": [
+            "oscal@nist.gov"
+          ],
+          "addresses": [
+            {
+              "addr-lines": [
+                "National Institute of Standards and Technology",
+                "Attn: Computer Security Division",
+                "Information Technology Laboratory",
+                "100 Bureau Drive (Mail Stop 2000)"
+              ],
+              "city": "Gaithersburg",
+              "state": "MD",
+              "postal-code": "20899-2000"
+            }
+          ]
+        },
+        {
+          "uuid": "985fea3e-a6e5-4a57-ba3d-74f063bc8fa2",
+          "type": "organization",
+          "name": "National Institute of Standards and Technology",
+          "short-name": "NIST",
+          "email-addresses": [
+            "ssdf@nist.gov"
+          ],
+          "addresses": [
+            {
+              "addr-lines": [
+                "National Institute of Standards and Technology",
+                "Attn: Computer Security Division",
+                "Information Technology Laboratory",
+                "100 Bureau Drive (Mail Stop 2000)"
+              ],
+              "city": "Gaithersburg",
+              "state": "MD",
+              "postal-code": "20899-2000"
+            }
+          ]
+        }
+      ],
+      "responsible-parties": [
+        {
+          "role-id": "creator",
+          "party-uuids": [
+            "98c78f9b-5d50-4b01-b47f-d16801e8d0ab"
+          ]
+        },
+        {
+          "role-id": "publisher",
+          "party-uuids": [
+            "985fea3e-a6e5-4a57-ba3d-74f063bc8fa2"
+          ]
+        },
+        {
+          "role-id": "contact-publisher",
+          "party-uuids": [
+            "985fea3e-a6e5-4a57-ba3d-74f063bc8fa2"
+          ]
+        },
+        {
+          "role-id": "contact-creator",
+          "party-uuids": [
+            "98c78f9b-5d50-4b01-b47f-d16801e8d0ab"
+          ]
+        }
+      ]
+    },
+    "groups": [
+      {
+        "id": "PO",
+        "class": "group",
+        "title": "Prepare the Organization",
+        "props": [
+          {
+            "name": "sort-id",
+            "value": "000001"
+          },
+          {
+            "name": "label",
+            "value": "Prepare the Organization (PO)"
+          }
+        ],
+        "parts": [
+          {
+            "id": "overview_PO",
+            "name": "overview",
+            "prose": "Organizations should ensure that their people, processes, and technology are prepared to perform secure software development at the organization level. Many organizations will find some PO practices to also be applicable to subsets of their secure software development, like individual development groups or projects."
+          }
+        ],
+        "controls": [
+          {
+            "id": "PO.1",
+            "class": "practice",
+            "title": "Define Security Requirements for Software Development",
+            "props": [
+              {
+                "name": "sort-id",
+                "value": "000001.000001"
+              },
+              {
+                "name": "label",
+                "value": "Define Security Requirements for Software Development (PO.1)"
+              }
+            ],
+            "parts": [
+              {
+                "id": "statement_PO.1",
+                "name": "statement",
+                "prose": "Ensure that security requirements for software development are known at all times so that they can be taken into account throughout the SDLC and duplication of effort can be minimized because the requirements information can be collected once and shared. This includes requirements from internal sources (e.g., the organization’s policies, business objectives, and risk management strategy) and external sources (e.g., applicable laws and regulations)."
+              }
+            ],
+            "controls": [
+              {
+                "id": "PO.1.1",
+                "class": "task",
+                "title": "PO.1.1",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000001.000001.000001"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PO.1.1"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "SM.3, DE.1, IA.1, IA.2"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "CP1.1, CP1.3, SR1.1, SR2.2, SE1.2, SE2.6"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(ix)"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SM-7, SM-9"
+                  },
+                  {
+                    "href": "#26f48464-ac58-4237-a108-dfdc787f7400",
+                    "rel": "external_reference",
+                    "text": "ID.GV-3"
+                  },
+                  {
+                    "href": "#8b354ddf-2f97-40f2-acc6-15b90bef0fba",
+                    "rel": "external_reference",
+                    "text": "1.1.1"
+                  },
+                  {
+                    "href": "#e3cb2596-7863-498f-8a37-7b47ea4f42c1",
+                    "rel": "external_reference",
+                    "text": "1.10"
+                  },
+                  {
+                    "href": "#990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+                    "rel": "external_reference",
+                    "text": "PC1-A, PC1-B, PC2-A"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "2.1, 2.2"
+                  },
+                  {
+                    "href": "#695939c2-27b9-4e45-b690-85de42dbd53a",
+                    "rel": "external_reference",
+                    "text": "Planning the Implementation and Deployment of Secure Development Practices"
+                  },
+                  {
+                    "href": "#79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+                    "rel": "external_reference",
+                    "text": "3.1.2, 3.2.1, 3.2.2, 3.3.1, 3.4.2, 3.4.3"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-1, SA-8, SA-15, SR-3"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "T0414; K0003, K0039, K0044, K0157, K0168, K0177, K0211, K0260, K0261, K0262, K0524; S0010, S0357, S0368; A0033, A0123, A0151"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-1, SA-8, SA-15, SR-3"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PO.1.1",
+                    "name": "statement",
+                    "prose": "Identify and document all security requirements for the organization’s software development infrastructures and processes, and maintain the requirements over time."
+                  },
+                  {
+                    "id": "PO.1.1.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Define policies for securing software development infrastructures and their components, including development endpoints, throughout the SDLC and maintaining that security."
+                  },
+                  {
+                    "id": "PO.1.1.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Define policies for securing software development processes throughout the SDLC and maintaining that security, including for open-source and other third-party software components utilized by software being developed."
+                  },
+                  {
+                    "id": "PO.1.1.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Review and update security requirements at least annually, or sooner if there are new requirements from internal or external sources, or a major security incident targeting software development infrastructure has occurred."
+                  },
+                  {
+                    "id": "PO.1.1.4",
+                    "name": "example",
+                    "title": "Example 4:",
+                    "prose": "Educate affected individuals on impending changes to requirements."
+                  }
+                ]
+              },
+              {
+                "id": "PO.1.2",
+                "class": "task",
+                "title": "PO.1.2",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000001.000001.000002"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PO.1.2"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "SC.1-1, SC.2, PD.1-1, PD.1-2, PD.1-3, PD.2-2, SI, PA, CS, AA, LO, EE"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "SM1.1, SM1.4, SM2.2, CP1.1, CP1.2, CP1.3, CP2.1, CP2.3, AM1.2, SFD1.1, SFD2.1, SFD3.2, SR1.1, SR1.3, SR2.2, SR3.3, SR3.4"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(ix)"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SR-3, SR-4, SR-5, SD-4"
+                  },
+                  {
+                    "href": "#0b6fd005-c938-466b-b1bf-f8f351b4df40",
+                    "rel": "external_reference",
+                    "text": "7.3.2"
+                  },
+                  {
+                    "href": "#c5330bd2-1d2c-4490-891e-aa87f21c7e05",
+                    "rel": "external_reference",
+                    "text": "2, 5"
+                  },
+                  {
+                    "href": "#26f48464-ac58-4237-a108-dfdc787f7400",
+                    "rel": "external_reference",
+                    "text": "ID.GV-3"
+                  },
+                  {
+                    "href": "#e3cb2596-7863-498f-8a37-7b47ea4f42c1",
+                    "rel": "external_reference",
+                    "text": "1.12"
+                  },
+                  {
+                    "href": "#990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+                    "rel": "external_reference",
+                    "text": "PC1-A, PC1-B, PC2-A, PC3-A, SR1-A, SR1-B, SR2-B, SA1-B, IR1-A"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "2.1, 2.2, 2.3, 3.3"
+                  },
+                  {
+                    "href": "#695939c2-27b9-4e45-b690-85de42dbd53a",
+                    "rel": "external_reference",
+                    "text": "Establish Coding Standards and Conventions"
+                  },
+                  {
+                    "href": "#79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+                    "rel": "external_reference",
+                    "text": "3.1.2, 3.2.1, 3.3.1"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-15, SR-3"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "T0414; K0003, K0039, K0044, K0157, K0168, K0177, K0211, K0260, K0261, K0262, K0524; S0010, S0357, S0368; A0033, A0123, A0151"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-8(3), SA-15, SR-3"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PO.1.2",
+                    "name": "statement",
+                    "prose": "Identify and document all security requirements for organization-developed software to meet, and maintain the requirements over time."
+                  },
+                  {
+                    "id": "PO.1.2.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Define policies that specify risk-based software architecture and design requirements, such as making code modular to facilitate code reuse and updates; isolating security components from other components during execution; avoiding undocumented commands and settings; and providing features that will aid software acquirers with the secure deployment, operation, and maintenance of the software."
+                  },
+                  {
+                    "id": "PO.1.2.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Define policies that specify the security requirements for the organization’s software, and verify compliance at key points in the SDLC (e.g., classes of software flaws verified by gates, responses to vulnerabilities discovered in released software)."
+                  },
+                  {
+                    "id": "PO.1.2.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Analyze the risk of applicable technology stacks (e.g., languages, environments, deployment models), and recommend or require the use of stacks that will reduce risk compared to others."
+                  },
+                  {
+                    "id": "PO.1.2.4",
+                    "name": "example",
+                    "title": "Example 4:",
+                    "prose": "Define policies that specify what needs to be archived for each software release (e.g., code, package files, third-party libraries, documentation, data inventory) and how long it needs to be retained based on the SDLC model, software end-of-life, and other factors."
+                  },
+                  {
+                    "id": "PO.1.2.5",
+                    "name": "example",
+                    "title": "Example 5:",
+                    "prose": "Ensure that policies cover the entire software life cycle, including notifying users of the impending end of software support and the date of software end-of-life."
+                  },
+                  {
+                    "id": "PO.1.2.6",
+                    "name": "example",
+                    "title": "Example 6:",
+                    "prose": "Review all security requirements at least annually, or sooner if there are new requirements from internal or external sources, a major vulnerability is discovered in released software, or a major security incident targeting organization-developed software has occurred."
+                  },
+                  {
+                    "id": "PO.1.2.7",
+                    "name": "example",
+                    "title": "Example 7:",
+                    "prose": "Establish and follow processes for handling requirement exception requests, including periodic reviews of all approved exceptions."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "PO.2",
+            "class": "practice",
+            "title": "Implement Roles and Responsibilities",
+            "props": [
+              {
+                "name": "sort-id",
+                "value": "000001.000002"
+              },
+              {
+                "name": "label",
+                "value": "Implement Roles and Responsibilities (PO.2)"
+              }
+            ],
+            "parts": [
+              {
+                "id": "statement_PO.2",
+                "name": "statement",
+                "prose": "Ensure that everyone inside and outside of the organization involved in the SDLC is prepared to perform their SDLC-related roles and responsibilities throughout the SDLC."
+              }
+            ],
+            "controls": [
+              {
+                "id": "PO.2.1",
+                "class": "task",
+                "title": "PO.2.1",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000001.000002.000001"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PO.2.1"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "PD.2-1, PD.2-2"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "SM1.1, SM2.3, SM2.7, CR1.7"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(ix)"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SM-2, SM-13"
+                  },
+                  {
+                    "href": "#26f48464-ac58-4237-a108-dfdc787f7400",
+                    "rel": "external_reference",
+                    "text": "ID.AM-6, ID.GV-2"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "1.2"
+                  },
+                  {
+                    "href": "#e2f794d0-d416-4019-b489-8cb66d93f264",
+                    "rel": "external_reference",
+                    "text": "Vendor Software Development Integrity Controls"
+                  },
+                  {
+                    "href": "#79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+                    "rel": "external_reference",
+                    "text": "3.2.1, 3.2.4, 3.3.1"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-3"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "K0233"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-3"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PO.2.1",
+                    "name": "statement",
+                    "prose": "Create new roles and alter responsibilities for existing roles as needed to encompass all parts of the SDLC. Periodically review and maintain the defined roles and responsibilities, updating them as needed."
+                  },
+                  {
+                    "id": "PO.2.1.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Define SDLC-related roles and responsibilities for all members of the software development team."
+                  },
+                  {
+                    "id": "PO.2.1.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Integrate the security roles into the software development team."
+                  },
+                  {
+                    "id": "PO.2.1.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Define roles and responsibilities for cybersecurity staff, security champions, project managers and leads, senior management, software developers, software testers, software assurance leads and staff, product owners, operations and platform engineers, and others involved in the SDLC."
+                  },
+                  {
+                    "id": "PO.2.1.4",
+                    "name": "example",
+                    "title": "Example 4:",
+                    "prose": "Conduct an annual review of all roles and responsibilities."
+                  },
+                  {
+                    "id": "PO.2.1.5",
+                    "name": "example",
+                    "title": "Example 5:",
+                    "prose": "Educate affected individuals on impending changes to roles and responsibilities, and confirm that the individuals understand the changes and agree to follow them."
+                  },
+                  {
+                    "id": "PO.2.1.6",
+                    "name": "example",
+                    "title": "Example 6:",
+                    "prose": "Implement and use tools and processes to promote communication and engagement among individuals with SDLC-related roles and responsibilities, such as creating messaging channels for team discussions."
+                  },
+                  {
+                    "id": "PO.2.1.7",
+                    "name": "example",
+                    "title": "Example 7:",
+                    "prose": "Designate a group of individuals or a team as the code owner for each project."
+                  }
+                ]
+              },
+              {
+                "id": "PO.2.2",
+                "class": "task",
+                "title": "PO.2.2",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000001.000002.000002"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PO.2.2"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "PD.2-2"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "T1.1, T1.7, T1.8, T2.5, T2.8, T2.9, T3.1, T3.2, T3.4"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(ix)"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SM-4"
+                  },
+                  {
+                    "href": "#c5330bd2-1d2c-4490-891e-aa87f21c7e05",
+                    "rel": "external_reference",
+                    "text": "1"
+                  },
+                  {
+                    "href": "#26f48464-ac58-4237-a108-dfdc787f7400",
+                    "rel": "external_reference",
+                    "text": "PR.AT"
+                  },
+                  {
+                    "href": "#990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+                    "rel": "external_reference",
+                    "text": "EG1-A, EG2-A"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "1.3"
+                  },
+                  {
+                    "href": "#a5dc0504-d406-412e-a6db-074c6f64e5ca",
+                    "rel": "external_reference",
+                    "text": "Operational Security Tasks 14, 15; Tasks Requiring the Help of Security Experts 1"
+                  },
+                  {
+                    "href": "#695939c2-27b9-4e45-b690-85de42dbd53a",
+                    "rel": "external_reference",
+                    "text": "Planning the Implementation and Deployment of Secure Development Practices"
+                  },
+                  {
+                    "href": "#e2f794d0-d416-4019-b489-8cb66d93f264",
+                    "rel": "external_reference",
+                    "text": "Vendor Software Development Integrity Controls"
+                  },
+                  {
+                    "href": "#79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+                    "rel": "external_reference",
+                    "text": "3.2.4, 3.2.6"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-8"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "OV-TEA-001, OV-TEA-002; T0030, T0073, T0320; K0204, K0208, K0220, K0226, K0243, K0245, K0252; S0100, S0101; A0004, A0057"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-8"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PO.2.2",
+                    "name": "statement",
+                    "prose": "Provide role-based training for all personnel with responsibilities that contribute to secure development. Periodically review personnel proficiency and role-based training, and update the training as needed."
+                  },
+                  {
+                    "id": "PO.2.2.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Document the desired outcomes of training for each role."
+                  },
+                  {
+                    "id": "PO.2.2.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Define the type of training or curriculum required to achieve the desired outcome for each role."
+                  },
+                  {
+                    "id": "PO.2.2.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Create a training plan for each role."
+                  },
+                  {
+                    "id": "PO.2.2.4",
+                    "name": "example",
+                    "title": "Example 4:",
+                    "prose": "Acquire or create training for each role; acquired training may need to be customized for the organization."
+                  },
+                  {
+                    "id": "PO.2.2.5",
+                    "name": "example",
+                    "title": "Example 5:",
+                    "prose": "Measure outcome performance to identify areas where changes to training may be beneficial."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "PW",
+        "class": "group",
+        "title": "Produce Well-Secured Software",
+        "props": [
+          {
+            "name": "sort-id",
+            "value": "000003"
+          },
+          {
+            "name": "label",
+            "value": "Produce Well-Secured Software (PW)"
+          }
+        ],
+        "parts": [
+          {
+            "id": "overview_PW",
+            "name": "overview",
+            "prose": "Organizations should produce well-secured software with minimal security vulnerabilities in its releases."
+          }
+        ],
+        "controls": [
+          {
+            "id": "PW.1",
+            "class": "practice",
+            "title": "Design Software to Meet Security Requirements and Mitigate Security Risks",
+            "props": [
+              {
+                "name": "sort-id",
+                "value": "000003.000001"
+              },
+              {
+                "name": "label",
+                "value": "Design Software to Meet Security Requirements and Mitigate Security Risks (PW.1)"
+              }
+            ],
+            "parts": [
+              {
+                "id": "statement_PW.1",
+                "name": "statement",
+                "prose": "Identify and evaluate the security requirements for the software; determine what security risks the software is likely to face during operation and how the software’s design and architecture should mitigate those risks; and justify any cases where risk-based analysis indicates that security requirements should be relaxed or waived. Addressing security requirements and risks during software design (secure by design) is key for improving software security and also helps improve development efficiency."
+              }
+            ],
+            "controls": [
+              {
+                "id": "PW.1.1",
+                "class": "task",
+                "title": "PW.1.1",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000003.000001.000001"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PW.1.1"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "SC.1"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "AM1.2, AM1.3, AM1.5, AM2.1, AM2.2, AM2.5, AM2.6, AM2.7, SFD2.2, AA1.1, AA1.2, AA1.3, AA2.1"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(ix)"
+                  },
+                  {
+                    "href": "#bf78c1f2-8c5a-43c8-9a8b-20d6d46db2c7",
+                    "rel": "external_reference",
+                    "text": "1"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SM-4, SR-1, SR-2, SD-1"
+                  },
+                  {
+                    "href": "#704448b0-e590-4a2d-b833-6c51618fb82d",
+                    "rel": "external_reference",
+                    "text": "2.1"
+                  },
+                  {
+                    "href": "#0b6fd005-c938-466b-b1bf-f8f351b4df40",
+                    "rel": "external_reference",
+                    "text": "7.3.3"
+                  },
+                  {
+                    "href": "#c5330bd2-1d2c-4490-891e-aa87f21c7e05",
+                    "rel": "external_reference",
+                    "text": "4"
+                  },
+                  {
+                    "href": "#26f48464-ac58-4237-a108-dfdc787f7400",
+                    "rel": "external_reference",
+                    "text": "ID.RA"
+                  },
+                  {
+                    "href": "#8b354ddf-2f97-40f2-acc6-15b90bef0fba",
+                    "rel": "external_reference",
+                    "text": "1.1.2, 1.2, 1.4, 1.6, 1.8, 1.9, 1.11, 2, 3, 4, 6, 8, 9, 11, 12, 13"
+                  },
+                  {
+                    "href": "#e3cb2596-7863-498f-8a37-7b47ea4f42c1",
+                    "rel": "external_reference",
+                    "text": "1.6, 1.8, 2, 3, 4, 5, 6"
+                  },
+                  {
+                    "href": "#990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+                    "rel": "external_reference",
+                    "text": "TA1-A, TA1-B, TA3-B, DR1-A"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "3.2, 3.3"
+                  },
+                  {
+                    "href": "#a5dc0504-d406-412e-a6db-074c6f64e5ca",
+                    "rel": "external_reference",
+                    "text": "Tasks Requiring the Help of Security Experts 3"
+                  },
+                  {
+                    "href": "#695939c2-27b9-4e45-b690-85de42dbd53a",
+                    "rel": "external_reference",
+                    "text": "Threat Modeling"
+                  },
+                  {
+                    "href": "#8c94dc08-34f0-448d-91b2-0f31cd05e842",
+                    "rel": "external_reference",
+                    "text": "Entire guide"
+                  },
+                  {
+                    "href": "#79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+                    "rel": "external_reference",
+                    "text": "3.3.4, 3.4.5"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-11(2), SA-11(6), SA-15(5)"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "T0038, T0062; K0005, K0009, K0038, K0039, K0070, K0080, K0119, K0147, K0149, K0151, K0152, K0160, K0161, K0162, K0165, K0297, K0310, K0344, K0362, K0487, K0624; S0006, S0009, S0022, S0078, S0171, S0229, S0248; A0092, A0093, A0107"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-11(2), SA-11(6), SA-15(5)"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PW.1.1",
+                    "name": "statement",
+                    "prose": "Use forms of risk modeling – such as threat modeling, attack modeling, or attack surface mapping – to help assess the security risk for the software."
+                  },
+                  {
+                    "id": "PW.1.1.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Train the development team (security champions, in particular) or collaborate with a risk modeling expert to create models and analyze how to use a risk-based approach to communicate the risks and determine how to address them, including implementing mitigations."
+                  },
+                  {
+                    "id": "PW.1.1.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Perform more rigorous assessments for high-risk areas, such as protecting sensitive data and safeguarding identification, authentication, and access control, including credential management."
+                  },
+                  {
+                    "id": "PW.1.1.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Review vulnerability reports and statistics for previous software to inform the security risk assessment."
+                  },
+                  {
+                    "id": "PW.1.1.4",
+                    "name": "example",
+                    "title": "Example 4:",
+                    "prose": "Use data classification methods to identify and characterize each type of data that the software will interact with."
+                  }
+                ]
+              },
+              {
+                "id": "PW.1.2",
+                "class": "task",
+                "title": "PW.1.2",
+                "props": [
+                  {
+                    "name": "sort-id",
+                    "value": "000003.000001.000002"
+                  },
+                  {
+                    "name": "label",
+                    "value": "PW.1.2"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "#00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+                    "rel": "external_reference",
+                    "text": "SC.1-1, PD.1-1"
+                  },
+                  {
+                    "href": "#f25c612a-bbe7-495e-ad30-183bf090e376",
+                    "rel": "external_reference",
+                    "text": "SFD3.1, SFD3.3, AA2.2, AA3.2"
+                  },
+                  {
+                    "href": "#a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+                    "rel": "external_reference",
+                    "text": "4e(v), 4e(ix)"
+                  },
+                  {
+                    "href": "#f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+                    "rel": "external_reference",
+                    "text": "SD-1"
+                  },
+                  {
+                    "href": "#0b6fd005-c938-466b-b1bf-f8f351b4df40",
+                    "rel": "external_reference",
+                    "text": "7.3.3"
+                  },
+                  {
+                    "href": "#c5330bd2-1d2c-4490-891e-aa87f21c7e05",
+                    "rel": "external_reference",
+                    "text": "4"
+                  },
+                  {
+                    "href": "#1aecff94-41b0-4db6-87b4-e594c9c5c5d4",
+                    "rel": "external_reference",
+                    "text": "2.2.2.2"
+                  },
+                  {
+                    "href": "#8b354ddf-2f97-40f2-acc6-15b90bef0fba",
+                    "rel": "external_reference",
+                    "text": "1.1.3, 1.1.4"
+                  },
+                  {
+                    "href": "#e3cb2596-7863-498f-8a37-7b47ea4f42c1",
+                    "rel": "external_reference",
+                    "text": "1.3, 1.6"
+                  },
+                  {
+                    "href": "#990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+                    "rel": "external_reference",
+                    "text": "DR1-B"
+                  },
+                  {
+                    "href": "#01e319d7-c2ab-494f-acfe-76b5941fc016",
+                    "rel": "external_reference",
+                    "text": "3.2, 3.3"
+                  },
+                  {
+                    "href": "#4c47252a-3356-45a7-b474-556c33d13ae4",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-17"
+                  },
+                  {
+                    "href": "#0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+                    "rel": "external_reference",
+                    "text": "T0256; K0005, K0038, K0039, K0147, K0149, K0160, K0161, K0162, K0165, K0344, K0362, K0487; S0006, S0009, S0078, S0171, S0229, S0248; A0092, A0107"
+                  },
+                  {
+                    "href": "#4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+                    "rel": "external_reference",
+                    "text": "SA-8, SA-10, SA-17"
+                  }
+                ],
+                "parts": [
+                  {
+                    "id": "statement_PW.1.2",
+                    "name": "statement",
+                    "prose": "Track and maintain the software’s security requirements, risks, and design decisions."
+                  },
+                  {
+                    "id": "PW.1.2.1",
+                    "name": "example",
+                    "title": "Example 1:",
+                    "prose": "Record the response to each risk, including how mitigations are to be achieved and what the rationales are for any approved exceptions to the security requirements. Add any mitigations to the software’s security requirements."
+                  },
+                  {
+                    "id": "PW.1.2.2",
+                    "name": "example",
+                    "title": "Example 2:",
+                    "prose": "Maintain records of design decisions, risk responses, and approved exceptions that can be used for auditing and maintenance purposes throughout the rest of the software life cycle."
+                  },
+                  {
+                    "id": "PW.1.2.3",
+                    "name": "example",
+                    "title": "Example 3:",
+                    "prose": "Periodically re-evaluate all approved exceptions to the security requirements, and implement changes as needed."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "back-matter": {
+      "resources": [
+        {
+          "uuid": "00b12b29-654e-4fbb-8db0-6a156deb7eb4",
+          "title": "BSAFSS",
+          "citation": {
+            "text": "BSA (2020) The BSA Framework for Secure Software: A New Approach to Securing the Software Lifecycle, Version 1.1."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.bsa.org/files/reports/bsa_framework_secure_software_update_2020.pdf"
+            }
+          ]
+        },
+        {
+          "uuid": "f25c612a-bbe7-495e-ad30-183bf090e376",
+          "title": "BSIMM",
+          "citation": {
+            "text": "Migues S, Erlikhman E, Ewers J, Nassery K (2021) BSIMM12 2021 Foundations Report."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.bsimm.com/content/dam/bsimm/reports/bsimm12-foundations.pdf"
+            }
+          ]
+        },
+        {
+          "uuid": "a5859a88-27b6-43fd-92e5-aed9941b6ccb",
+          "title": "EO14028",
+          "citation": {
+            "text": "Executive Order 14028 (2021) Improving the Nation’s Cybersecurity. (The White House, Washington, DC), DCPD-202100401, May 12, 2021."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.govinfo.gov/app/details/DCPD-202100401"
+            }
+          ]
+        },
+        {
+          "uuid": "f7767db5-eb4c-47fc-8bcc-fb93a20ad406",
+          "title": "IEC62443",
+          "citation": {
+            "text": "International Electrotechnical Commission (IEC), Security for industrial automation and control systems – Part 4-1: Secure product development lifecycle requirements, IEC 62443-4-1, 2018."
+          },
+          "rlinks": [
+            {
+              "href": "https://webstore.iec.ch/publication/33615"
+            }
+          ]
+        },
+        {
+          "uuid": "26f48464-ac58-4237-a108-dfdc787f7400",
+          "title": "NISTCSF",
+          "citation": {
+            "text": "National Institute of Standards and Technology (2018) Framework for Improving Critical Infrastructure Cybersecurity, Version 1.1. (National Institute of Standards and Technology, Gaithersburg, MD)."
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.CSWP.04162018"
+            }
+          ]
+        },
+        {
+          "uuid": "8b354ddf-2f97-40f2-acc6-15b90bef0fba",
+          "title": "OWASPASVS",
+          "citation": {
+            "text": "Open Web Application Security Project (2021) OWASP Application Security Verification Standard 4.0.3."
+          },
+          "rlinks": [
+            {
+              "href": "https://github.com/OWASP/ASVS"
+            }
+          ]
+        },
+        {
+          "uuid": "e3cb2596-7863-498f-8a37-7b47ea4f42c1",
+          "title": "OWASPMASVS",
+          "citation": {
+            "text": "Open Web Application Security Project (2021) OWASP Mobile Application Security Verification Standard, Version 1.4.2."
+          },
+          "rlinks": [
+            {
+              "href": "https://github.com/OWASP/owasp-masvs/releases"
+            }
+          ]
+        },
+        {
+          "uuid": "990b58bf-e88e-4ed0-95dd-f52e6b933d60",
+          "title": "OWASPSAMM",
+          "citation": {
+            "text": "Open Web Application Security Project (2017) Software Assurance Maturity Model Version 1.5."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.owasp.org/index.php/OWASP_SAMM_Project"
+            }
+          ]
+        },
+        {
+          "uuid": "01e319d7-c2ab-494f-acfe-76b5941fc016",
+          "title": "PCISSLC",
+          "citation": {
+            "text": "Payment Card Industry (PCI) Security Standards Council (2021) Secure Software Lifecycle (Secure SLC) Requirements and Assessment Procedures Version 1.1."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.pcisecuritystandards.org/document_library?category=sware_sec#results"
+            }
+          ]
+        },
+        {
+          "uuid": "695939c2-27b9-4e45-b690-85de42dbd53a",
+          "title": "SCFPSSD",
+          "citation": {
+            "text": "Software Assurance Forum for Excellence in Code (2018) Fundamental Practices for Secure Software Development: Essential Elements of a Secure Development Lifecycle Program, Third Edition."
+          },
+          "rlinks": [
+            {
+              "href": "https://safecode.org/wp-content/uploads/2018/03/SAFECode_Fundamental_Practices_for_Secure_Software_Development_March_2018.pdf"
+            }
+          ]
+        },
+        {
+          "uuid": "79b86445-1dc2-497e-9097-6ae5bcc36c4b",
+          "title": "SP800160",
+          "citation": {
+            "text": "Ross R, McEvilley M, Oren J (2016) Systems Security Engineering: Considerations for a Multidisciplinary Approach in the Engineering of Trustworthy Secure Systems. (National Institute of Standards and Technology, Gaithersburg, MD), NIST Special Publication (SP) 800-160, Volume 1. Includes updates as of March 21, 2018."
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.SP.800-160v1"
+            }
+          ]
+        },
+        {
+          "uuid": "4c47252a-3356-45a7-b474-556c33d13ae4",
+          "title": "SP800161",
+          "citation": {
+            "text": "Boyens J, Smith A, Bartol N, Winkler K, Holbrook A, Fallon M (2021) Cybersecurity Supply Chain Risk Management Practices for Systems and Organizations. (National Institute of Standards and Technology, Gaithersburg, MD), Second Draft NIST Special Publication (SP) 800-161, Rev. 1."
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.SP.800-161r1-draft2"
+            }
+          ]
+        },
+        {
+          "uuid": "0aa5e31f-31d7-41bd-8ae9-dd68229f683c",
+          "title": "SP800181",
+          "citation": {
+            "text": " \"Newhouse W, Keith S, Scribner B, Witte G (2017) National Initiative for Cybersecurity Education (NICE) Cybersecurity Workforce Framework. (National Institute of Standards and Technology, Gaithersburg, MD), NIST Special Publication (SP) 800-181.\" "
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.SP.800-181"
+            }
+          ]
+        },
+        {
+          "uuid": "4f517150-7171-44ba-ae0c-5fb1f2b3a3f8",
+          "title": "SP80053",
+          "citation": {
+            "text": "Joint Task Force (2020) Security and Privacy Controls for Information Systems and Organizations. (National Institute of Standards and Technology, Gaithersburg, MD), NIST Special Publication (SP) 800-53, Rev. 5. Includes updates as of December 10, 2020."
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.SP.800-53r5"
+            }
+          ]
+        },
+        {
+          "uuid": "0b6fd005-c938-466b-b1bf-f8f351b4df40",
+          "title": "ISO27034",
+          "citation": {
+            "text": "International Organization for Standardization (ISO)/International Electrotechnical Commission (IEC), Information technology – Security techniques – Application security – Part 1: Overview and concepts, ISO/IEC 27034-1:2011, 2011."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.iso.org/standard/44378.html"
+            }
+          ]
+        },
+        {
+          "uuid": "c5330bd2-1d2c-4490-891e-aa87f21c7e05",
+          "title": "MSSDL",
+          "citation": {
+            "text": "Microsoft (2021) Security Development Lifecycle."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.microsoft.com/en-us/securityengineering/sdl/"
+            }
+          ]
+        },
+        {
+          "uuid": "bf78c1f2-8c5a-43c8-9a8b-20d6d46db2c7",
+          "title": "IDASOAR",
+          "citation": {
+            "text": "Hong Fong EK, Wheeler D, Henninger A (2016) State-of-the-Art Resources (SOAR) for Software Vulnerability Detection, Test, and Evaluation 2016. (Institute for Defense Analyses [IDA], Alexandria, VA), IDA Paper P-8005."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.ida.org/research-and-publications/publications/all/s/st/stateoftheart-resources-soar-for-software-vulnerability-detection-test-and-evaluation-2016"
+            }
+          ]
+        },
+        {
+          "uuid": "a5dc0504-d406-412e-a6db-074c6f64e5ca",
+          "title": "SCAGILE",
+          "citation": {
+            "text": "Software Assurance Forum for Excellence in Code (2012) Practical Security Stories and Security Tasks for Agile Development Environments."
+          },
+          "rlinks": [
+            {
+              "href": "http://www.safecode.org/publication/SAFECode_Agile_Dev_Security0712.pdf"
+            }
+          ]
+        },
+        {
+          "uuid": "e2f794d0-d416-4019-b489-8cb66d93f264",
+          "title": "SCSIC",
+          "citation": {
+            "text": "Software Assurance Forum for Excellence in Code (2010) Software Integrity Controls: An Assurance-Based Approach to Minimizing Risks in the Software Supply Chain."
+          },
+          "rlinks": [
+            {
+              "href": "http://www.safecode.org/publication/SAFECode_Software_Integrity_Controls0610.pdf"
+            }
+          ]
+        },
+        {
+          "uuid": "704448b0-e590-4a2d-b833-6c51618fb82d",
+          "title": "IR8397",
+          "citation": {
+            "text": "Black P, Guttman B, Okun V (2021) Guidelines on Minimum Standards for Developer Verification of Software. (National Institute of Standards and Technology, Gaithersburg, MD), NIST Interagency or Internal Report (IR) 8397."
+          },
+          "rlinks": [
+            {
+              "href": "https://doi.org/10.6028/NIST.IR.8397"
+            }
+          ]
+        },
+        {
+          "uuid": "1aecff94-41b0-4db6-87b4-e594c9c5c5d4",
+          "title": "NISTLABEL",
+          "citation": {
+            "text": "Ogata M, Haney J, Merkel W, Phelps A (2022) Recommended Criteria for Cybersecurity Labeling of Consumer Software. (National Institute of Standards and Technology, Gaithersburg, MD)."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.nist.gov/itl/executive-order-improving-nations-cybersecurity"
+            }
+          ]
+        },
+        {
+          "uuid": "8c94dc08-34f0-448d-91b2-0f31cd05e842",
+          "title": "SCTTM",
+          "citation": {
+            "text": "Software Assurance Forum for Excellence in Code (2017) Tactical Threat Modeling."
+          },
+          "rlinks": [
+            {
+              "href": "https://www.safecode.org/wp-content/uploads/2017/05/SAFECode_TM_Whitepaper.pdf"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

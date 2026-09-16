@@ -1,0 +1,1461 @@
+openapi: 3.1.0
+info:
+  title: Compliance Ops API
+  version: 1.0.0
+  description: |
+    Read-only OSCAL document view plus compliance tracking (frameworks,
+    requirements with structured OSCAL control parts and parameters,
+    per-statement-part implementation tracking, file and link evidence linked
+    to requirements, dashboard, audit).
+
+    OSCAL parameter placeholders (`{{ insert: param, <id> }}`) are resolved at
+    import time into NIST-style text: fixed values are joined with `, `;
+    selections render as `[Selection: a; b]` or `[Selection (one or more): a; b]`;
+    labelled parameters render as `[Assignment: organization-defined <label>]`;
+    unknown ids render as `[Assignment: <id>]`. Stored `parts`, `text` and
+    `title` never contain placeholders; the parameters themselves are exposed as
+    `params` on the requirement detail.
+
+    Statuses use the OSCAL implementation-status vocabulary:
+    `implemented`, `partial`, `planned` (default), `alternative`, `not_applicable`.
+
+    Tracking happens per *trackable part*: the items of the control's `statement`
+    part (e.g. `ac-2_smt.a`), or the statement itself when it has no items
+    (`ac-3_smt`), or a synthetic `<controlId>_smt` when the control has no statement.
+    Nested OSCAL controls of class `task` (NIST SP 800-218 SSDF) are not requirements of
+    their own: each task is folded into its parent practice as a statement item (id =
+    task id, e.g. `PO.1.1`), its notional implementation examples become an `examples`
+    part (`PO.1.1_ex`) and its external references join the requirement's `references`
+    list (resolved against back-matter, tagged with the task id); `related` holds
+    control ids only.
+    Other nested controls (NIST SP 800-53 enhancements such as `ac-2.1`) stay separate
+    requirements.
+    Each part carries status, owner, due date and a markdown description. A
+    requirement's `status`, `owner` and `dueDate` are **derived** from its parts
+    (`derivedStatus` = all not_applicable → not_applicable; else over the applicable
+    parts: all implemented → implemented; all planned → planned; alternative present
+    with no partial and everything else implemented/alternative → alternative; else
+    partial; `owner` = most common non-empty part owner, ties by part order; `dueDate` =
+    earliest due date of parts that are neither implemented nor not_applicable). A manual
+    `statusOverride` replaces the derived status as the effective `status` when set.
+
+    Conventions:
+    * Every `/v1` route accepts any bearer token from the server's named runtime token set;
+      `/healthz` and the UI are public.
+    * The named token file must use owner-only mode `0400`/`0600` or
+      owner/group-read-only mode `0440`/`0640`; all other permissions are rejected.
+    * Named token values must be unique token68-safe strings of at least 12 characters.
+      Randomly generated values of at least 43 characters are recommended for production.
+    * Errors are JSON `{ "code": string, "message"?: string }`. Codes: `INVALID_QUERY` (400),
+      `INVALID_BODY` (400), `UNAUTHORIZED` (401), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405),
+      `CONFLICT` (409), `PAYLOAD_TOO_LARGE` (413), `INTERNAL` (500),
+      `OSCAL_SOURCE_UNAVAILABLE` (503), `TRACKING_UNAVAILABLE` (503, tracking store or blob store not configured).
+    * `405 METHOD_NOT_ALLOWED` responses carry an `Allow` header listing the methods
+      registered for that path (comma-separated, e.g. `Allow: GET, HEAD`).
+    * List routes reject unknown query parameters with `400 INVALID_QUERY`.
+    * Timestamps are RFC 3339 strings in UTC. Date-only inputs (`dueDate`, `validFrom`,
+      `validUntil`) are `YYYY-MM-DD` and are stored/returned as UTC midnight timestamps.
+    * Optional time fields (`dueDate`, `validFrom`, `validUntil`) are omitted from responses
+      when unset (never `null`).
+    * The audit actor is the trusted server-side `COMPLIANCE_AUDIT_ACTOR` value
+      (trimmed, max 200 characters, default `operator`). Caller-provided `X-Actor`
+      is accepted for compatibility but ignored and has no authority.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+tags:
+  - name: health
+  - name: oscal
+  - name: frameworks
+  - name: scope-categories
+  - name: requirements
+  - name: evidence
+  - name: dashboard
+  - name: audit
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Liveness check (public)
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+
+  /v1/oscal/sources:
+    get:
+      tags: [oscal]
+      summary: Discover every configured OSCAL source independently
+      description: No query parameters are accepted. Failed sources are unavailable rows and do not fail the response. URLs omit userinfo, query, and fragment.
+      responses:
+        "200":
+          description: Configured sources in operator order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/OscalSource" } }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/oscal/uploads:
+    post:
+      tags: [oscal]
+      summary: Upload one OSCAL JSON document
+      description: Exactly one non-empty multipart `file` is required. Original bytes are limited to 10 MiB and SHA-256 hashed. Arrays, malformed JSON, unsupported roots, and multiple documents are rejected. Filename and media type are ignored.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201": { description: Uploaded metadata, content: { application/json: { schema: { $ref: "#/components/schemas/OscalUpload" } } } }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: Duplicate SHA-256 with existing upload metadata, content: { application/json: { schema: { $ref: "#/components/schemas/OscalUploadConflict" } } } }
+        "413": { description: File exceeds 10 MiB, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+    get:
+      tags: [oscal]
+      summary: List uploaded OSCAL metadata, newest first
+      responses:
+        "200": { description: Metadata only, content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/OscalUpload" } } } } } } }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/oscal/uploads/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [oscal]
+      summary: Get upload metadata and stored OSCAL JSON
+      responses:
+        "200": { description: Upload detail, content: { application/json: { schema: { $ref: "#/components/schemas/OscalUploadDetail" } } } }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+    delete:
+      tags: [oscal]
+      summary: Delete an upload not linked to an imported framework
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Referenced by an imported framework, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/oscal/documents:
+    get:
+      tags: [oscal]
+      summary: List OSCAL document summaries
+      description: No query parameters are accepted.
+      responses:
+        "200":
+          description: Document summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/OscalDocumentSummary" }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/OscalUnavailable" }
+
+  /v1/oscal/documents/{documentId}:
+    parameters:
+      - $ref: "#/components/parameters/documentId"
+    get:
+      tags: [oscal]
+      summary: Get one OSCAL document summary plus the canonical document
+      responses:
+        "200":
+          description: Summary and raw document
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OscalDocumentDetail" }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/OscalUnavailable" }
+
+  /v1/oscal/documents/{documentId}/controls:
+    parameters:
+      - $ref: "#/components/parameters/documentId"
+    get:
+      tags: [oscal]
+      summary: Search controls of a document
+      description: Only `q` and `limit` are accepted. `limit` must be an integer in 1..100 (default 50).
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on control id, title and text.
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: Matching controls (first `limit`) and the total match count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [documentId, items, total]
+                properties:
+                  documentId: { type: string }
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/OscalControl" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/OscalUnavailable" }
+
+  /v1/oscal/documents/{documentId}/controls/{controlId}:
+    parameters:
+      - $ref: "#/components/parameters/documentId"
+      - name: controlId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [oscal]
+      summary: Get one control
+      responses:
+        "200":
+          description: Control detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [documentId]
+                    properties:
+                      documentId: { type: string }
+                  - $ref: "#/components/schemas/OscalControl"
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/OscalUnavailable" }
+
+  /v1/frameworks/import:
+    post:
+      tags: [frameworks]
+      summary: Import OSCAL catalogs/profiles as frameworks
+      description: |
+        Imports every `catalog` and `profile` document from all configured OSCAL sources
+        (`COMPLIANCE_OSCAL_SOURCE_URL`, comma-separated), or only the document named by
+        `documentId`. Profiles are resolved against referenced catalogs available in the
+        configured document set or persisted catalog uploads; unresolved or zero-control
+        profiles fail with `400` and never create empty frameworks. Re-import is
+        intentionally non-destructive: controls present in the source are upserted, while
+        controls missing from the new source remain retained snapshots so tracking and
+        evidence are preserved. Nothing is deleted (`created` is 0 on the second run).
+        Body may be empty.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              maxProperties: 1
+              properties:
+                documentId:
+                  type: string
+                  description: OSCAL document uuid. Unknown → 404; non catalog/profile → 400.
+                uploadId:
+                  type: string
+                  description: Persisted upload id. Exactly one of documentId or uploadId may be supplied; only catalog/profile uploads are importable.
+      responses:
+        "200":
+          description: Import results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ImportResult" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /v1/frameworks:
+    get:
+      tags: [frameworks]
+      summary: List imported frameworks
+      responses:
+        "200":
+          description: Frameworks sorted by title
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Framework" }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/frameworks/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [frameworks]
+      summary: Get a framework
+      responses:
+        "200":
+          description: Framework
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Framework" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+    patch:
+      tags: [frameworks]
+      summary: Update the framework short name
+      description: |
+        Sets the user-editable `shortName` (trimmed, 1..60 characters). Re-imports never
+        overwrite a non-empty short name. Unknown fields → 400. Audited as `framework.update`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [shortName]
+              properties:
+                shortName: { type: string, minLength: 1, maxLength: 60 }
+      responses:
+        "200":
+          description: Updated framework
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Framework" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/scope-categories:
+    get:
+      tags: [scope-categories]
+      summary: List reusable scope categories
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive name substring.
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+      responses:
+        "200":
+          description: Categories ordered alphabetically by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ScopeCategory" } }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [scope-categories]
+      summary: Create a reusable scope category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScopeCategoryWrite" }
+      responses:
+        "201":
+          description: Created category
+          content: { application/json: { schema: { $ref: "#/components/schemas/ScopeCategory" } } }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { description: A category with the same case-insensitive name exists. }
+
+  /v1/scope-categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [scope-categories]
+      summary: Rename a scope category
+      description: Optional `expectedUpdatedAt` must exactly match the persisted category timestamp. Omit it for a legacy unconditional rename; `null` is invalid. The check and rename are atomic.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ScopeCategoryPatch" } } }
+      responses:
+        "200": { description: Updated category, content: { application/json: { schema: { $ref: "#/components/schemas/ScopeCategory" } } } }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The optional expectedUpdatedAt is stale, or a category with the same case-insensitive name exists.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    delete:
+      tags: [scope-categories]
+      summary: Delete an unused scope category
+      parameters:
+        - name: expectedUpdatedAt
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: Exact current category updatedAt. Omit for legacy unconditional deletion. Invalid or repeated values return 400.
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: The expectedUpdatedAt is stale (`resource was modified`) or the category is assigned to a part (`scope category is in use`)., content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /v1/requirements:
+    get:
+      tags: [requirements]
+      summary: List requirements
+      parameters:
+        - name: frameworkId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/RequirementStatus" }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on controlId, title and text.
+        - name: scopeCategoryId
+          in: query
+          schema: { type: string }
+          description: Repeat or comma-separate UUIDs. ANY category match includes the requirement; unknown UUIDs return zero matches.
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: |
+            Page of requirements ordered by framework then controlId. List rows omit
+            `parts` (use the detail route); `related` is always present.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Requirement" }
+                  total: { type: integer, description: Total matches ignoring pagination }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/requirements/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [requirements]
+      summary: Get a requirement with its parts, parameters, per-part tracking and linked evidence
+      responses:
+        "200":
+          description: |
+            Requirement detail (`parts`, `params`, `trackableParts` and `evidence` are always
+            arrays here). `trackableParts` merges the stored tracking into the statement items in
+            document order; a part without stored tracking reads as `planned` with empty owner and
+            description and no `dueDate`/`updatedAt`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequirementDetail" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+    patch:
+      tags: [requirements]
+      summary: Update requirement notes and manual status override
+      description: |
+        Only the supplied fields change. `statusOverride` accepts a status to set, `null` to
+        clear (back to the derived status), or may be omitted. `status`, `owner` and `dueDate` are
+        derived from the parts: sending any of them → 400 INVALID_BODY with message
+        `status, owner and dueDate are derived from parts`. Unknown fields → 400. Writes one audit
+        entry (`requirement.update`, detail `statusOverride {from,to}` and/or `notes: true`).
+        Optional `expectedUpdatedAt` must be an RFC3339 timestamp exactly matching the persisted
+        requirement `updatedAt`; stale values fail atomically with 409 CONFLICT. Omission preserves
+        legacy unconditional writes. `null` is invalid because the requirement always exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequirementPatch" }
+      responses:
+        "200":
+          description: Updated requirement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Requirement" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/PreconditionConflict" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/requirements/{id}/parts/{partId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - name: partId
+        in: path
+        required: true
+        schema: { type: string, maxLength: 200 }
+        description: A trackable part id of the requirement (see `trackableParts`), e.g. `ac-2_smt.a`.
+    patch:
+      tags: [requirements]
+      summary: Update the tracking of one statement part
+      description: |
+        Creates the tracking row on first write. Only the supplied fields change. `dueDate`
+        accepts `"YYYY-MM-DD"` to set, `null` to clear, or may be omitted. `owner` is trimmed.
+        `scopeCategoryIds` atomically replaces all selected categories. Implemented parts require at
+        least one category. Unknown category ids and unknown trackable parts → 404. Unknown fields → 400.
+        `expectedUpdatedAt` has three distinct states: omitted keeps the legacy unconditional write;
+        explicit `null` requires that no persisted tracking row exists; an RFC3339 string must exactly
+        match the persisted part-tracking `updatedAt`. A lazy planned part with no `updatedAt` can be
+        created safely only with `null`; after creation, `null` is stale. Stale checks and writes are
+        atomic and return 409 CONFLICT.
+        The requirement's derived `status`/`owner`/`dueDate` are recomputed in the same
+        transaction and returned. Audited as `part.update` on the requirement
+        (`entityType: requirement`, detail `{ partId, status/owner/dueDate {from,to}, description: true }`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PartPatch" }
+      responses:
+        "200":
+          description: The updated part and the requirement with recomputed derived values
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PartPatchResult" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/PreconditionConflict" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/evidence:
+    post:
+      tags: [evidence]
+      summary: Create evidence (file upload or link)
+      description: |
+        Two body variants:
+
+        * `multipart/form-data` — file evidence (`kind: file`). The whole request body is limited
+          to the configured maximum upload size (default 50 MiB) → 413 when exceeded. The file is
+          stored content-addressed by SHA-256; uploading identical bytes twice creates two evidence
+          records that share one stored object. Content type comes from the file part header
+          (default `application/octet-stream`). A `url` field instead of the `file` part creates
+          link evidence; sending both → 400.
+        * `application/json` — link evidence only (`kind` must be `link`, else 400). `url` must be
+          an `http`/`https` URL with a host, without credentials, at most 2048 characters.
+
+        Both variants link the evidence to requirements (`requirementIds`); at least one id is
+        required (else 400) and every id must exist (else 404).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkEvidenceCreate" }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Exactly one non-empty file part (file evidence). Either `file` or `url` is required.
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                  description: Link evidence instead of a file (http/https, host required, no userinfo).
+                title: { type: string, maxLength: 200 }
+                description: { type: string, maxLength: 10000 }
+                validFrom: { type: string, format: date, description: YYYY-MM-DD }
+                validUntil: { type: string, format: date, description: YYYY-MM-DD, must not precede validFrom }
+                requirementIds:
+                  type: array
+                  items: { type: string }
+                  description: Repeat the field and/or comma-separate ids. Every id must exist (else 404).
+            encoding:
+              requirementIds:
+                style: form
+                explode: true
+      responses:
+        "201":
+          description: Created evidence (`kind` is `file` or `link`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evidence" }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "413":
+          description: Upload exceeds the size limit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { code: PAYLOAD_TOO_LARGE, message: upload exceeds the size limit }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+    get:
+      tags: [evidence]
+      summary: List evidence
+      parameters:
+        - name: requirementId
+          in: query
+          schema: { type: string }
+        - name: kind
+          in: query
+          schema: { $ref: "#/components/schemas/EvidenceKind" }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring match on title, description, fileName and url.
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+      responses:
+        "200":
+          description: Page of evidence, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Evidence" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/evidence/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [evidence]
+      summary: Get evidence metadata
+      responses:
+        "200":
+          description: Evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evidence" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/evidence/{id}/download:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [evidence]
+      summary: Download the stored file
+      description: |
+        Only for `kind: file`. Link evidence answers `404 NOT_FOUND` with message
+        `link evidence has no file` (no redirect). Streams the original bytes with `Content-Type`, `Content-Length`,
+        `Content-Disposition`, `X-Content-Sha256` and `X-Content-Type-Options: nosniff`.
+        `Content-Disposition` is always `attachment; filename="<sanitized>"` (the filename
+        is always quoted; CR/LF, quotes, backslashes and path separators are stripped, and
+        an empty name falls back to `evidence`). When the stored name contains non-ASCII
+        characters an RFC 8187 `filename*=UTF-8''<percent-encoded>` parameter is appended.
+      responses:
+        "200":
+          description: File bytes
+          headers:
+            Content-Disposition: { schema: { type: string } }
+            Content-Length: { schema: { type: integer } }
+            X-Content-Sha256: { schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+          content:
+            "*/*":
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/dashboard:
+    get:
+      tags: [dashboard]
+      summary: Compliance overview
+      description: |
+        Uses each requirement's effective `status` (override or derived) and derived `dueDate`.
+        `coveragePercent = implemented / (total - not_applicable) * 100`, rounded to one decimal,
+        `0` when nothing is applicable. A requirement is *open* when its status is neither
+        `implemented` nor `not_applicable`; an open requirement with a `dueDate` is `overdue` when
+        that date is before today (UTC) and `dueSoon` when it is due today or within the next 30
+        days. `upcomingRequirements` lists every open requirement with a due date sorted by
+        `dueDate` then `controlId`, capped at 20 rows (omitting `parts`/`params`), each annotated
+        with `daysUntilDue` (negative when overdue), `overdue` and `frameworkShortName`. Evidence
+        validity is not evaluated by the dashboard. `recentActivity` is the latest 20 audit
+        entries (including `part.update` rows).
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/audit:
+    get:
+      tags: [audit]
+      summary: Recent audit entries, newest first
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: Audit entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEntry" }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/TrackingUnavailable" }
+
+  /v1/assessments:
+    get:
+      tags: [assessments]
+      summary: List normalized uploaded OSCAL assessment documents
+      parameters:
+        - { name: type, in: query, schema: { type: string, enum: [assessment-plan, assessment-results, plan-of-action-and-milestones] } }
+        - { name: frameworkId, in: query, schema: { type: string }, description: Framework UUID or unlinked }
+        - { name: limit, in: query, schema: { type: integer, default: 50, minimum: 1, maximum: 200 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0, minimum: 0 } }
+      responses:
+        "200":
+          description: Assessment summaries and total
+          content: { application/json: { schema: { $ref: "#/components/schemas/AssessmentList" } } }
+        "400": { $ref: "#/components/responses/InvalidQuery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /v1/assessments/{uploadId}:
+    parameters: [ { name: uploadId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [assessments]
+      summary: Get normalized plan, results, or POA&M detail
+      responses:
+        "200": { description: Normalized assessment with mapping information, content: { application/json: { schema: { $ref: "#/components/schemas/AssessmentDetail" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/assessments/{uploadId}/framework:
+    parameters: [ { name: uploadId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    patch:
+      tags: [assessments]
+      summary: Set or clear the manual framework link
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, additionalProperties: false, required: [frameworkId], properties: { frameworkId: { type: [string, "null"], format: uuid } } } } }
+      responses:
+        "200": { description: Updated upload, content: { application/json: { schema: { $ref: "#/components/schemas/OscalUpload" } } } }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/assessments/{uploadId}/mappings:
+    parameters: [ { name: uploadId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      tags: [assessments]
+      summary: Upsert a manual assessment item mapping
+      description: |
+        `itemKey` must be a deterministic key present in the currently stored,
+        parsed assessment document. Fabricated or stale keys are rejected with
+        `400` before any mapping is written.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AssessmentMappingInput" } } }
+      responses:
+        "201": { description: Mapping, content: { application/json: { schema: { $ref: "#/components/schemas/AssessmentMapping" } } } }
+        "400": { $ref: "#/components/responses/InvalidBody" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/assessments/{uploadId}/mappings/{itemKey}:
+    parameters:
+      - { name: uploadId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: itemKey, in: path, required: true, schema: { type: string }, description: URL-escaped deterministic item key }
+    delete:
+      tags: [assessments]
+      summary: Delete a manual assessment item mapping
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/requirements/{id}/assessments:
+    parameters: [ { $ref: "#/components/parameters/id" } ]
+    get:
+      tags: [assessments]
+      summary: List assessment items mapped to a requirement without changing status
+      responses:
+        "200": { description: Mapped assessment items, content: { application/json: { schema: { type: object, required: [items, total], properties: { items: { type: array, items: { $ref: "#/components/schemas/RequirementAssessmentItem" } }, total: { type: integer } } } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: One token value from the named set loaded through `COMPLIANCE_API_TOKENS_FILE`. Values must be unique token68-safe strings of at least 12 characters; randomly generated values of at least 43 characters are recommended for production. Token labels are not caller identities and are never sent to the API.
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    documentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string }
+      description: OSCAL document uuid.
+    limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 0, default: 50 }
+      description: Page size. 0 or absent → 50; values above 200 are clamped to 200.
+    offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+
+  responses:
+    InvalidQuery:
+      description: Invalid or unknown query parameter
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: INVALID_QUERY }
+    InvalidBody:
+      description: Invalid request body
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: INVALID_BODY, message: invalid status }
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: UNAUTHORIZED }
+    NotFound:
+      description: Entity not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: NOT_FOUND }
+    PreconditionConflict:
+      description: The persisted resource no longer matches expectedUpdatedAt
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: CONFLICT, message: resource was modified }
+    OscalUnavailable:
+      description: The configured OSCAL source could not be read
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: OSCAL_SOURCE_UNAVAILABLE }
+    TrackingUnavailable:
+      description: Tracking store (or blob store for file routes) is not configured
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: TRACKING_UNAVAILABLE, message: tracking store is not configured }
+    Unavailable:
+      description: OSCAL source unreadable or tracking store not configured
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          examples:
+            oscal: { value: { code: OSCAL_SOURCE_UNAVAILABLE } }
+            tracking: { value: { code: TRACKING_UNAVAILABLE } }
+
+  schemas:
+    AssessmentMappingInput:
+      type: object
+      additionalProperties: false
+      required: [itemKey, requirementId]
+      properties:
+        itemKey: { type: string, maxLength: 1000 }
+        requirementId: { type: string, format: uuid }
+        partId: { type: string, maxLength: 200 }
+    AssessmentMapping:
+      allOf:
+        - { $ref: "#/components/schemas/AssessmentMappingInput" }
+        - type: object
+          required: [uploadId, mappedBy, mappedAt]
+          properties:
+            uploadId: { type: string, format: uuid }
+            mappedBy: { type: string }
+            mappedAt: { type: string, format: date-time }
+    MappingInfo:
+      type: object
+      required: [source]
+      properties:
+        source: { type: string, enum: [manual, automatic, unmapped] }
+        requirementId: { type: string, format: uuid }
+        partId: { type: string }
+        controlId: { type: string }
+    AssessmentCounts:
+      type: object
+      required: [reviewedControls, subjects, tasks, results, findings, observations, risks, poamItems, unmappedItems]
+      properties:
+        reviewedControls: { type: integer }
+        subjects: { type: integer }
+        tasks: { type: integer }
+        results: { type: integer }
+        findings: { type: integer }
+        observations: { type: integer }
+        risks: { type: integer }
+        poamItems: { type: integer }
+        unmappedItems: { type: integer }
+    AssessmentSummary:
+      type: object
+      required: [uploadId, documentId, type, title, uploadedAt, linkSource, counts]
+      properties:
+        uploadId: { type: string, format: uuid }
+        documentId: { type: string }
+        type: { type: string, enum: [assessment-plan, assessment-results, plan-of-action-and-milestones] }
+        title: { type: string }
+        version: { type: string }
+        lastModified: { type: string }
+        uploadedAt: { type: string, format: date-time }
+        effectiveFrameworkId: { type: string, format: uuid }
+        linkSource: { type: string, enum: [manual, automatic, unlinked] }
+        counts: { $ref: "#/components/schemas/AssessmentCounts" }
+    AssessmentList:
+      type: object
+      required: [items, total]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AssessmentSummary" } }
+        total: { type: integer }
+    AssessmentDetail:
+      allOf:
+        - { $ref: "#/components/schemas/AssessmentSummary" }
+        - type: object
+          description: Normalized fields for the document type; every assessable record has itemKey and mapping.
+          additionalProperties: true
+    RequirementAssessmentItem:
+      type: object
+      required: [uploadId, documentId, title, type, itemKey, kind, summary]
+      properties:
+        uploadId: { type: string, format: uuid }
+        documentId: { type: string }
+        title: { type: string }
+        type: { type: string }
+        itemKey: { type: string }
+        kind: { type: string }
+        summary: { type: string }
+        risk: { type: string }
+        status: { type: string }
+        partId: { type: string }
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum: [INVALID_QUERY, INVALID_BODY, UNAUTHORIZED, NOT_FOUND, METHOD_NOT_ALLOWED, CONFLICT, PAYLOAD_TOO_LARGE, OSCAL_SOURCE_UNAVAILABLE, TRACKING_UNAVAILABLE, INTERNAL]
+        message: { type: string }
+
+    RequirementStatus:
+      type: string
+      description: OSCAL implementation-status. Untracked parts (and therefore new requirements) read as `planned`.
+      enum: [implemented, partial, planned, alternative, not_applicable]
+
+    EvidenceKind:
+      type: string
+      enum: [file, link]
+
+    OscalDocumentSummary:
+      type: object
+      required: [id, type, title, controlCount]
+      properties:
+        id: { type: string, description: OSCAL root uuid }
+        type:
+          type: string
+          enum: [catalog, profile, component-definition, system-security-plan, assessment-plan, assessment-results, plan-of-action-and-milestones]
+        title: { type: string }
+        lastModified: { type: string, description: Omitted when the source has no metadata.last-modified }
+        controlCount: { type: integer }
+        version: { type: string, description: metadata.version; omitted when absent }
+
+    OscalSource:
+      type: object
+      required: [id, url, status, documents]
+      properties:
+        id: { type: string, pattern: "^[0-9a-f]{16}$", description: Stable SHA-256 prefix of the canonical configured URL }
+        url: { type: string, format: uri, description: Configured scheme, host, and path only }
+        status: { type: string, enum: [available, unavailable] }
+        documents: { type: array, items: { $ref: "#/components/schemas/OscalDocumentSummary" } }
+        errorCode: { type: string, const: OSCAL_SOURCE_UNAVAILABLE }
+
+    OscalUpload:
+      type: object
+      required: [id, documentId, type, title, sha256, sizeBytes, uploadedBy, uploadedAt]
+      properties:
+        id: { type: string, format: uuid }
+        documentId: { type: string }
+        type: { type: string, enum: [catalog, profile, component-definition, system-security-plan, assessment-plan, assessment-results, plan-of-action-and-milestones] }
+        title: { type: string }
+        version: { type: string }
+        lastModified: { type: string }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        sizeBytes: { type: integer, format: int64, minimum: 1, maximum: 10485760 }
+        uploadedBy: { type: string }
+        uploadedAt: { type: string, format: date-time }
+        importedFrameworkId: { type: string, format: uuid }
+        linkedFrameworkId: { type: string, format: uuid }
+
+    OscalUploadDetail:
+      allOf:
+        - $ref: "#/components/schemas/OscalUpload"
+        - type: object
+          required: [document]
+          properties:
+            document: { type: object, additionalProperties: true }
+
+    OscalUploadConflict:
+      type: object
+      required: [code, message, existing]
+      properties:
+        code: { type: string, const: CONFLICT }
+        message: { type: string, const: OSCAL file already uploaded }
+        existing: { $ref: "#/components/schemas/OscalUpload" }
+
+    OscalDocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/OscalDocumentSummary"
+        - type: object
+          required: [document]
+          properties:
+            document:
+              type: object
+              additionalProperties: true
+              description: The canonical OSCAL document as fetched (root keyed by its type).
+
+    OscalControl:
+      type: object
+      required: [id, title, text, parts, raw]
+      properties:
+        id: { type: string }
+        title: { type: string, description: Parameter placeholders resolved }
+        text: { type: string, description: Flattened id, title, and part prose/name text (placeholders resolved) }
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/ControlPart" }
+        params:
+          type: array
+          items: { $ref: "#/components/schemas/ControlParam" }
+          description: The control's own OSCAL parameters; omitted when it has none.
+        related:
+          type: array
+          items: { type: string }
+          description: Control ids from links with rel=related; omitted when empty.
+        references:
+          type: array
+          items: { $ref: "#/components/schemas/Reference" }
+          description: Resolved external references (own links and folded task links); omitted when empty.
+        raw: { type: object, additionalProperties: true, description: The unmodified OSCAL control (placeholders intact) }
+
+    Framework:
+      type: object
+      required: [id, oscalDocumentId, type, title, shortName, importedAt, requirementCount]
+      properties:
+        id: { type: string }
+        oscalDocumentId: { type: string }
+        type: { type: string, enum: [catalog, profile] }
+        title: { type: string }
+        shortName:
+          type: string
+          maxLength: 60
+          description: |
+            Display short name. Derived on import (metadata `short-name`/`abbreviation` prop, then
+            known patterns such as `NIST SP 800-53`, `NIST SP 800-218 SSDF`, `ISO/IEC 27001`, `SOC 2`,
+            `FedRAMP High`, else
+            the first 40 characters of the title with `…`) only while empty; editable via PATCH.
+        lastModified: { type: string, description: Omitted when empty }
+        importedAt: { type: string, format: date-time }
+        requirementCount: { type: integer }
+
+    ImportResult:
+      type: object
+      required: [framework, created, updated]
+      properties:
+        framework: { $ref: "#/components/schemas/Framework" }
+        created: { type: integer }
+        updated: { type: integer }
+
+    ControlPart:
+      type: object
+      required: [name]
+      description: Structured OSCAL control part; nested `parts` preserve document order.
+      properties:
+        id: { type: string, description: OSCAL part id, e.g. ac-2_smt.a; omitted when absent }
+        name: { type: string, description: e.g. statement, item, guidance, assessment-objective }
+        label: { type: string, description: From the OSCAL `label` prop (e.g. "a."); omitted when absent }
+        prose:
+          type: string
+          description: |
+            Prose with every `{{ insert: param, <id> }}` placeholder resolved (e.g.
+            `Designate an [Assignment: organization-defined official] to manage …`). Omitted when empty.
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/ControlPart" }
+          description: Omitted when empty.
+
+    ControlParam:
+      type: object
+      required: [id]
+      description: |
+        An OSCAL control parameter (organization-defined parameter). Exactly how it was rendered
+        into the prose: `values` → joined with `, `; else `choices` → `[Selection: …]` /
+        `[Selection (one or more): …]`; else `label` → `[Assignment: organization-defined <label>]`.
+      properties:
+        id: { type: string, description: e.g. ac-01_odp.04 }
+        label: { type: string, description: Omitted when absent }
+        values:
+          type: array
+          items: { type: string }
+          description: Fixed values; omitted when empty.
+        choices:
+          type: array
+          items: { type: string }
+          description: Selection choices (placeholders resolved in prose, raw here); omitted when the parameter has no select.
+        howMany:
+          type: string
+          enum: [one, one-or-more]
+          description: Selection cardinality; omitted when the parameter has no select.
+
+    Reference:
+      type: object
+      required: [uuid, title]
+      description: |
+        An external reference of a control: an OSCAL link with `rel=external_reference` (or
+        `rel=reference` pointing at a back-matter resource), resolved against the document's
+        `back-matter.resources`. Unresolved uuids keep `uuid` and `text` with an empty `title`.
+      properties:
+        uuid: { type: string, description: "Back-matter resource uuid (leading `#` stripped); empty when the link href was a plain URL" }
+        title: { type: string, description: "Resource title, e.g. `BSIMM`, `SP800-53`; empty when unresolved" }
+        citation: { type: string, description: "Resource `citation.text`; omitted when absent" }
+        url: { type: string, description: "First `rlinks[].href` of the resource (or the link href itself); omitted when absent" }
+        text: { type: string, description: "Link text naming the referenced section, e.g. `SA-11`, `CR1.5`; omitted when absent" }
+        taskId: { type: string, description: "Folded task (e.g. `PO.1.1`) that carried the link; omitted for the control's own links" }
+
+    Requirement:
+      type: object
+      required: [id, frameworkId, controlId, title, text, status, derivedStatus, owner, notes, updatedAt, related]
+      properties:
+        id: { type: string }
+        frameworkId: { type: string }
+        controlId: { type: string }
+        title: { type: string }
+        text: { type: string, description: Flattened search text (id, title, part prose/names) }
+        status:
+          allOf: [{ $ref: "#/components/schemas/RequirementStatus" }]
+          description: Effective status — `statusOverride` when set, else `derivedStatus`. Used by the list filter and the dashboard.
+        derivedStatus:
+          allOf: [{ $ref: "#/components/schemas/RequirementStatus" }]
+          description: Status derived from the trackable parts (see the API description).
+        statusOverride:
+          allOf: [{ $ref: "#/components/schemas/RequirementStatus" }]
+          description: Manual status set via PATCH; omitted when not set.
+        owner: { type: string, description: Derived — most common non-empty part owner; empty string when none }
+        dueDate: { type: string, format: date-time, description: Derived — earliest due date of open parts (UTC midnight); omitted when none }
+        notes: { type: string }
+        updatedAt: { type: string, format: date-time }
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/ControlPart" }
+          description: Structured OSCAL parts (placeholders resolved). Omitted in list/dashboard rows; always present on the detail route.
+        params:
+          type: array
+          items: { $ref: "#/components/schemas/ControlParam" }
+          description: The control's OSCAL parameters. Omitted in list/dashboard rows; always present on the detail route.
+        related:
+          type: array
+          items: { type: string }
+          description: Related control ids from OSCAL links with rel=related (leading `#` stripped). Always present.
+        references:
+          type: array
+          items: { $ref: "#/components/schemas/Reference" }
+          description: Resolved OSCAL external references. Omitted in list/dashboard rows; always present on the detail route.
+
+    RequirementDetail:
+      allOf:
+        - $ref: "#/components/schemas/Requirement"
+        - type: object
+          required: [parts, params, references, trackableParts, evidence]
+          properties:
+            parts:
+              type: array
+              items: { $ref: "#/components/schemas/ControlPart" }
+            params:
+              type: array
+              items: { $ref: "#/components/schemas/ControlParam" }
+            references:
+              type: array
+              items: { $ref: "#/components/schemas/Reference" }
+            trackableParts:
+              type: array
+              minItems: 1
+              items: { $ref: "#/components/schemas/TrackablePart" }
+              description: Statement items (or the statement / synthetic part) with their tracking merged in, in document order.
+            evidence:
+              type: array
+              items: { $ref: "#/components/schemas/Evidence" }
+              description: Up to 200 linked evidence records (file and link), newest first.
+
+    TrackablePart:
+      type: object
+      required: [partId, status, owner, description, scopes]
+      properties:
+        partId: { type: string, description: e.g. ac-2_smt.a, ac-3_smt, or the synthetic <controlId>_smt }
+        label: { type: string, description: OSCAL label prop (e.g. "a."); omitted when absent }
+        prose: { type: string, description: Part prose with placeholders resolved; omitted when empty }
+        status: { $ref: "#/components/schemas/RequirementStatus" }
+        owner: { type: string, description: Empty string when unassigned }
+        dueDate: { type: string, format: date-time, description: UTC midnight; omitted when unset }
+        description: { type: string, maxLength: 20000, description: Markdown; empty string when none }
+        scopes:
+          type: array
+          items: { $ref: "#/components/schemas/ScopeCategory" }
+          description: Always an array, sorted by category name; implemented parts have at least one.
+        updatedAt: { type: string, format: date-time, description: Omitted while the part has never been written }
+
+    PartPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        status: { $ref: "#/components/schemas/RequirementStatus" }
+        owner: { type: string, maxLength: 200, description: Trimmed }
+        dueDate:
+          oneOf:
+            - { type: string, format: date, description: YYYY-MM-DD }
+            - { type: "null", description: Clears the due date }
+        description: { type: string, maxLength: 20000, description: Markdown }
+        scopeCategoryIds:
+          type: array
+          items: { type: string, format: uuid }
+          description: Replaces all selected categories atomically; duplicate ids are ignored.
+        expectedUpdatedAt:
+          oneOf:
+            - { type: string, format: date-time, description: Must exactly match the persisted tracking row updatedAt. }
+            - { type: "null", description: Requires no persisted tracking row; use for safe first creation of a lazy part. }
+          description: Omit for a legacy unconditional write. Timestamp equality is normalized to PostgreSQL microsecond precision.
+
+    ScopeCategory:
+      type: object
+      required: [id, name, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ScopeCategoryWrite:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: Trimmed; unique case-insensitively. }
+
+    ScopeCategoryPatch:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, description: Trimmed; unique case-insensitively. }
+        expectedUpdatedAt: { type: string, format: date-time, description: Exact current category updatedAt. Omit for a legacy unconditional rename; null is invalid. }
+
+    PartPatchResult:
+      type: object
+      required: [part, requirement]
+      properties:
+        part: { $ref: "#/components/schemas/TrackablePart" }
+        requirement:
+          allOf: [{ $ref: "#/components/schemas/Requirement" }]
+          description: The requirement with recomputed derived values (`parts`/`params` omitted).
+
+    LinkEvidenceCreate:
+      type: object
+      additionalProperties: false
+      required: [kind, url, title, requirementIds]
+      properties:
+        kind: { type: string, const: link }
+        url: { type: string, format: uri, maxLength: 2048, description: http/https, host required, no userinfo }
+        title: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        validFrom: { type: string, format: date, description: YYYY-MM-DD }
+        validUntil: { type: string, format: date, description: YYYY-MM-DD, must not precede validFrom }
+        requirementIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+          description: Every id must exist (else 404).
+
+    RequirementPatch:
+      type: object
+      additionalProperties: false
+      description: "`status`, `owner` and `dueDate` are derived from parts and rejected here (400)."
+      properties:
+        statusOverride:
+          oneOf:
+            - $ref: "#/components/schemas/RequirementStatus"
+            - { type: "null", description: Clears the override }
+        notes: { type: string, maxLength: 10000 }
+        expectedUpdatedAt: { type: string, format: date-time, description: Exact current requirement updatedAt. Omit for a legacy unconditional write; null is invalid. Timestamp equality is normalized to PostgreSQL microsecond precision. }
+
+    Evidence:
+      type: object
+      required: [id, kind, title, description, fileName, contentType, sizeBytes, sha256, uploadedBy, createdAt, requirementIds]
+      description: |
+        `kind: file` carries fileName/contentType/sizeBytes/sha256 and no `url`;
+        `kind: link` carries `url` while the file fields are empty strings / 0.
+        `validFrom`/`validUntil` are descriptive metadata only.
+      properties:
+        id: { type: string }
+        kind: { $ref: "#/components/schemas/EvidenceKind" }
+        url: { type: string, format: uri, description: Present for kind=link only }
+        title: { type: string }
+        description: { type: string }
+        fileName: { type: string, description: Sanitized base name of the uploaded file; empty for links }
+        contentType: { type: string, description: Empty for links }
+        sizeBytes: { type: integer, format: int64, description: 0 for links }
+        sha256: { type: string, description: Lowercase hex SHA-256 for files; empty for links }
+        validFrom: { type: string, format: date-time, description: Omitted when unset }
+        validUntil: { type: string, format: date-time, description: Omitted when unset }
+        uploadedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        requirementIds:
+          type: array
+          items: { type: string }
+          description: Linked requirements. Always present.
+
+    AuditEntry:
+      type: object
+      required: [id, at, actor, action, entityType, entityId, detail]
+      properties:
+        id: { type: string }
+        at: { type: string, format: date-time }
+        actor: { type: string }
+        action:
+          type: string
+          description: |
+            framework.import, framework.update, requirement.update (detail: statusOverride
+            {from,to}, notes: true), part.update (entityType requirement; detail: partId,
+            status/owner/dueDate {from,to}, description: true), evidence.create
+            (detail: kind, requirementIds, url|sha256). Databases migrated from earlier
+            versions may still contain historical implementation.* rows with entityType activity.
+            OSCAL persistence adds oscal.upload and oscal.delete.
+        entityType: { type: string, enum: [framework, requirement, evidence, oscal_upload, activity] }
+        entityId: { type: string }
+        detail:
+          type: object
+          additionalProperties: true
+          description: Action-specific change details (may be an empty object).
+
+    StatusCounts:
+      type: object
+      required: [implemented, partial, planned, alternative, not_applicable]
+      properties:
+        implemented: { type: integer }
+        partial: { type: integer }
+        planned: { type: integer }
+        alternative: { type: integer }
+        not_applicable: { type: integer }
+
+    Stats:
+      type: object
+      required: [total, applicable, implemented, coveragePercent, byStatus, overdue, dueSoon]
+      properties:
+        total: { type: integer }
+        applicable: { type: integer, description: total - not_applicable }
+        implemented: { type: integer }
+        coveragePercent: { type: number, description: One decimal; 0 when applicable is 0 }
+        byStatus: { $ref: "#/components/schemas/StatusCounts" }
+        overdue: { type: integer, description: Open requirements whose dueDate is before today }
+        dueSoon: { type: integer, description: Open requirements due today or within the next 30 days }
+
+    FrameworkStats:
+      allOf:
+        - type: object
+          required: [frameworkId, title, shortName]
+          properties:
+            frameworkId: { type: string }
+            title: { type: string }
+            shortName: { type: string }
+        - $ref: "#/components/schemas/Stats"
+
+    UpcomingRequirement:
+      allOf:
+        - $ref: "#/components/schemas/Requirement"
+        - type: object
+          required: [frameworkShortName, daysUntilDue, overdue]
+          properties:
+            frameworkShortName: { type: string }
+            daysUntilDue: { type: integer, description: Whole days from today (UTC) to dueDate; negative when overdue, 0 when due today }
+            overdue: { type: boolean, description: dueDate is before today }
+
+    Dashboard:
+      type: object
+      required: [generatedAt, frameworks, totals, upcomingRequirements, recentActivity]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        frameworks:
+          type: array
+          items: { $ref: "#/components/schemas/FrameworkStats" }
+        totals: { $ref: "#/components/schemas/Stats" }
+        upcomingRequirements:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/UpcomingRequirement" }
+          description: Open requirements with a dueDate, sorted by dueDate then controlId (overdue first); parts/params omitted.
+        recentActivity:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/AuditEntry" }

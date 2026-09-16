@@ -1,0 +1,108 @@
+# Local stack for Compliance Ops.
+#
+# Copy .env.example to .env and replace every placeholder before running:
+#   docker compose up -d --build        # app + dependencies
+#   docker compose up -d postgres minio # dependencies only
+#
+# Keep API bearer tokens in a separate mode-0600 .env.tokens raw JSON file.
+# token-prep copies it without printing it into a named volume owned by the app.
+
+services:
+  token-prep:
+    image: busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    user: "0:0"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        cp /source/compliance-api-tokens.json /prepared/.compliance-api-tokens.json.tmp
+        chmod 0440 /prepared/.compliance-api-tokens.json.tmp
+        chown 65532:65532 /prepared/.compliance-api-tokens.json.tmp
+        mv -f /prepared/.compliance-api-tokens.json.tmp /prepared/compliance-api-tokens.json
+    read_only: true
+    cap_drop: ["ALL"]
+    # CHOWN sets the app identity; DAC_OVERRIDE reads the host's mode-0600 source.
+    cap_add: ["CHOWN", "DAC_OVERRIDE"]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - type: bind
+        source: ./.env.tokens
+        target: /source/compliance-api-tokens.json
+        read_only: true
+      - type: volume
+        source: compliance-api-tokens
+        target: /prepared
+
+  app:
+    build: .
+    image: compliance-ops:dev
+    depends_on:
+      token-prep:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      DATABASE_URL: "postgres://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD_URLSAFE:?set a URL-safe POSTGRES_PASSWORD_URLSAFE in .env}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}?sslmode=disable"
+      COMPLIANCE_BLOB_ENDPOINT: minio:9000
+      COMPLIANCE_BLOB_ACCESS_KEY: "${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}"
+      COMPLIANCE_BLOB_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}"
+      COMPLIANCE_BLOB_BUCKET: "${COMPLIANCE_BLOB_BUCKET:-compliance-evidence}"
+      COMPLIANCE_BLOB_USE_SSL: "false"
+      COMPLIANCE_API_TOKENS_FILE: /run/secrets/compliance-api-tokens.json
+      COMPLIANCE_AUDIT_ACTOR: "${COMPLIANCE_AUDIT_ACTOR:-operator}"
+      # Comma-separated OSCAL sources; defaults to NIST SP 800-53 rev5 and SSDF 1.1.
+      COMPLIANCE_OSCAL_SOURCE_URL: "${COMPLIANCE_OSCAL_SOURCE_URL:-https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json,https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-218/ver1/json/NIST_SP800-218_ver1_catalog.json}"
+    volumes:
+      - type: volume
+        source: compliance-api-tokens
+        target: /run/secrets
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    # The distroless image has no shell/curl; probe GET /healthz externally.
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER in .env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD_URLSAFE:?set a URL-safe POSTGRES_PASSWORD_URLSAFE in .env}"
+      POSTGRES_DB: "${POSTGRES_DB:?set POSTGRES_DB in .env}"
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    # quay.io is MinIO's official mirror; docker.io pulls may be denied.
+    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}"
+    ports:
+      - "127.0.0.1:${MINIO_API_HOST_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  minio-data:
+  compliance-api-tokens:

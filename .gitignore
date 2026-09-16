@@ -1,0 +1,27 @@
+codex-harness-s1ns3nz0/
+node_modules/
+**/node_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Local agent state and runtime credentials.
+.claude/
+.env
+.env.*
+!.env.example
+.env.tokens
+.mcp-evidence/
+
+# Local Compose overrides.
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+
+# Frontend build output. Vite writes straight into internal/webui/dist (see
+# web/vite.config.ts); internal/webui/.gitignore ignores that directory's
+# contents while keeping the placeholder index.html / .gitkeep tracked so that
+# `//go:embed all:dist` compiles from a fresh clone. Do NOT add a blanket
+# `**/dist/` rule here: git cannot re-include files under an excluded directory.
+web/dist/
