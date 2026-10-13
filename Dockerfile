@@ -17,6 +17,9 @@ RUN npm ci --no-audit --no-fund
 
 COPY web/ ./
 # vite.config.ts writes to ../internal/webui/dist, i.e. /src/internal/webui/dist.
+# VITE_BASE: build the UI for a sub-path behind a reverse proxy, e.g. --build-arg VITE_BASE=/complianceops/
+ARG VITE_BASE=/
+ENV VITE_BASE=$VITE_BASE
 RUN npm run build
 
 # ---- Stage 2: Go binary ----------------------------------------------------

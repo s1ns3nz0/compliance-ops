@@ -119,6 +119,9 @@ function friendlyMessage(status: number, code: string): string {
   }
 }
 
+// API paths are absolute (/v1/…); under a sub-path (VITE_BASE) they get the base in front.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   for (const [k, v] of Object.entries(authHeaders())) headers.set(k, v)
@@ -127,7 +130,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   headers.set('Accept', 'application/json')
 
-  const res = await fetch(path, { ...init, headers })
+  const res = await fetch(BASE + path, { ...init, headers })
   if (res.status === 401) {
     saveAuth(null)
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
@@ -148,7 +151,7 @@ function qs(params: object): string {
 }
 
 export const api = {
-  health: () => fetch('/healthz').then((r) => r.ok),
+  health: () => fetch(`${BASE}/healthz`).then((r) => r.ok),
 
   // Frameworks
   listFrameworks: () => request<{ items: Framework[] }>('/v1/frameworks'),
@@ -249,7 +252,7 @@ export const api = {
     }),
   /** Fetches the binary with the bearer header and triggers a browser download via a blob URL. */
   downloadEvidence: async (id: string, fileName: string) => {
-    const res = await fetch(`/v1/evidence/${encodeURIComponent(id)}/download`, {
+    const res = await fetch(`${BASE}/v1/evidence/${encodeURIComponent(id)}/download`, {
       headers: authHeaders(),
     })
     if (res.status === 401) {
